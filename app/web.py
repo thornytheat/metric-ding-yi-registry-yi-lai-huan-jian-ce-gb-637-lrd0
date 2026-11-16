@@ -28,6 +28,7 @@ NAV = (
 )
 STATUS_LABELS = {
     "done": "完成", "failed": "失败", "running": "运行中",
+    "applied": "已生效",
     "registered": "注册", "isolated": "隔离", "blank": "空行", "comment": "注释",
     "OK": "有效", "OVERLAP": "区间重叠", "INVERTED": "起止倒挂",
     "BAD_FROM": "起始无效", "UNKNOWN": "未注册",

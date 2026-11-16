@@ -1,4 +1,4 @@
-/* 终端手册交互：键位切页、复制命令、两处表单提交。状态集中在一个对象里。 */
+/* 终端手册交互：键位切页、复制命令、三处表单提交。状态集中在一个对象里。 */
 (() => {
   const state = { nav: [], busy: false };
 
@@ -132,11 +132,62 @@
     });
   }
 
+  function wireFix() {
+    const form = document.getElementById('fix-form');
+    if (!form) return;
+    const message = document.getElementById('fix-msg');
+    const select = form.querySelector('#fx-line');
+    const textarea = form.querySelector('#fx-raw');
+    function syncRaw() {
+      const opt = select.options[select.selectedIndex];
+      if (opt) textarea.value = opt.dataset.raw || '';
+    }
+    select.addEventListener('change', syncRaw);
+    syncRaw();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (state.busy) return;
+      const opt = select.options[select.selectedIndex];
+      if (!opt) return;
+      state.busy = true;
+      const button = form.querySelector('button[type="submit"]');
+      button.disabled = true;
+      setMessage(message, '修复重放中…');
+      const payload = {
+        line_no: Number(opt.value),
+        raw_after: textarea.value,
+        base_revision: Number(opt.dataset.revision || '0'),
+        author: 'web',
+      };
+      const batchEl = document.querySelector('[data-batch-id]');
+      if (batchEl) payload.batch_id = batchEl.textContent.trim();
+      try {
+        const result = await postJson('/api/diagnostics/fix', payload);
+        if (result.ok && result.body.accepted) {
+          setMessage(message, '已生效，第 ' + result.body.revision + ' 代', 'ok');
+          window.setTimeout(() => window.location.reload(), 500);
+        } else if (result.ok) {
+          const code = result.body.line && result.body.line.code ? result.body.line.code : '';
+          setMessage(message, '重算未通过 ' + code + '，记录已留痕，可改后再试', 'bad');
+          window.setTimeout(() => window.location.reload(), 900);
+        } else {
+          setMessage(message, errorText(result.body, result.status), 'bad');
+        }
+      } catch (err) {
+        setMessage(message, '网络失败，检查服务是否在 18206', 'bad');
+      } finally {
+        state.busy = false;
+        button.disabled = false;
+      }
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     state.nav = navLinks();
     document.addEventListener('keydown', onKeydown);
     wireCopy();
     wireImport();
     wireVersion();
+    wireFix();
   });
 })();

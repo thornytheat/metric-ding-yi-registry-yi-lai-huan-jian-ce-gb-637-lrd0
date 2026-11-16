@@ -90,6 +90,13 @@ REASONS = {
     "Q_DUP_LINE": _r(
         "Q_DUP_LINE", ERROR, "diagnose",
         "与前面某行定义完全相同", "本行隔离，保留首次出现的定义"),
+    # ---- M3 修复重放 ----
+    "F_STALE_FIX": _r(
+        "F_STALE_FIX", ERROR, "diagnose",
+        "修复基于过期的行状态，已被拒绝", "先查该行最新修复记录，再基于最新代数重新提交"),
+    "F_LINE_INVALID": _r(
+        "F_LINE_INVALID", ERROR, "diagnose",
+        "修复目标不是可修复的定义行", "按原批次行号修复定义行，修复内容必须是一行"),
     # ---- M4 依赖图 ----
     "C_DUP_NAME_BLOCK": _r(
         "C_DUP_NAME_BLOCK", ERROR, "graph",

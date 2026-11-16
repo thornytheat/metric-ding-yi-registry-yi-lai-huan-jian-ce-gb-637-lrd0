@@ -1,11 +1,11 @@
-"""M3 入口：诊断列表、隔离导出、诊断页。"""
+"""M3 入口：诊断列表、隔离导出、修复重放、诊断页。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Body, Depends, Request, Response
 
 from ... import errors
 from ...web import Ctx, get_ctx, render
-from . import service
+from . import fixes, service
 
 router = APIRouter(tags=["M3 解析诊断"])
 
@@ -39,6 +39,24 @@ def api_diagnostics_csv(batch_id: str | None = None,
                  f'attachment; filename="metricreg-diagnostics-{batch["batch_id"]}.csv"'})
 
 
+@router.post("/api/diagnostics/fix")
+def api_diagnostic_fix(payload: dict | None = Body(default=None),
+                       batch_id: str | None = None,
+                       ctx: Ctx = Depends(get_ctx)) -> dict:
+    batch = _batch(ctx, batch_id)
+    return fixes.apply_fix(ctx.settings, ctx.store, batch,
+                           payload if isinstance(payload, dict) else {})
+
+
+@router.get("/api/diagnostics/fixes")
+def api_diagnostic_fixes(batch_id: str | None = None,
+                         ctx: Ctx = Depends(get_ctx)) -> dict:
+    batch = _batch(ctx, batch_id)
+    payload = fixes.view(ctx.store, batch["batch_id"])
+    payload["batch_id"] = batch["batch_id"]
+    return payload
+
+
 @router.get("/diagnostics")
 def page_diagnostics(request: Request, batch_id: str | None = None,
                      code: str | None = None, level: str | None = None,
@@ -48,8 +66,10 @@ def page_diagnostics(request: Request, batch_id: str | None = None,
                "by_level": {"error": 0, "warn": 0, "info": 0},
                "filters": {"code": code or "", "level": level or "",
                            "stage": stage or ""}, "codes": []}
+    fixes_payload = {"fixes": [], "lines": [], "repairable": [], "count": 0}
     if batch is not None:
         payload = service.view(ctx.store.load_diagnostics(batch["batch_id"]),
                                code=code, level=level, stage=stage)
+        fixes_payload = fixes.view(ctx.store, batch["batch_id"])
     return render(request, "diagnostics.html", batch=batch, page="diagnostics",
-                  payload=payload, page_title="诊断与隔离")
+                  payload=payload, fixes=fixes_payload, page_title="诊断与隔离")

@@ -1,6 +1,6 @@
 # 深度登记 metricreg（指标定义注册与依赖环检测）
 
-- 规模：中型（7 个功能模块 / 7 个页面 / 81 个文件 / 101 条测试）
+- 规模：中型（7 个功能模块 / 7 个页面 / 83 个文件 / 113 条测试）
 - 核心规则一：**DSL 解析与登记**——一行一条 `name = expr [where …] [group by …] [depends: …]`，先做全角归一，再词法/语法分析；结构扫描与语法解析两条独立路径，检出项按固定优先级排序，规则书写顺序不影响结论。
 - 核心规则二：**依赖成环检测**——按指标→指标边建图，用显式栈迭代 Tarjan 求强连通分量；分量大小 >1 或单点自环即判环，给出环路路径；同名指标按聚合/过滤/分组差异分三级冲突，保留行号最小的一条。
 - 核心规则三：**下线与迁移次序**——环按分量计数（一个环只出一条，TRAP-27），单点只有自环才算环（孤立指标不进环，TRAP-28）；迁移次序按「依赖方先迁、被依赖方后下线」做确定性 Kahn 排序，环内指标进阻断表；同名指标按评估日生效版本说清下的是哪一版。
@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | M1 指标接入 | 粘贴 DSL 或选样例，看到逐行状态与阶段计数 | POST /api/import、页面 / | `app/modules/m1_ingest/service.py` `app/modules/m1_ingest/decode.py` `app/modules/m1_ingest/reader.py` `app/modules/m1_ingest/lines.py` | `tests/test_ingest.py` |
 | M2 语法规则 | 查聚合/字段/维度登记表与文法，试解析单行 | GET /api/contract、POST /api/syntax/preview、页面 /contract | `app/modules/m2_syntax/grammar.py` `app/modules/m2_syntax/contract.py` `app/modules/m2_syntax/coerce.py` | `tests/test_syntax.py` |
-| M3 解析诊断 | 看原因码分布与隔离行，导出隔离 CSV | GET /api/diagnostics、页面 /diagnostics | `app/modules/m3_diagnostics/rules.py` `app/modules/m3_diagnostics/metrics.py` `app/modules/m3_diagnostics/quarantine.py` | `tests/test_diagnostics.py` |
+| M3 解析诊断 | 看原因码分布与隔离行，导出隔离 CSV，按行修复重放并查修复记录 | GET /api/diagnostics、POST /api/diagnostics/fix、GET /api/diagnostics/fixes、页面 /diagnostics | `app/modules/m3_diagnostics/rules.py` `app/modules/m3_diagnostics/metrics.py` `app/modules/m3_diagnostics/quarantine.py` `app/modules/m3_diagnostics/fixes.py` | `tests/test_diagnostics.py` `tests/test_fixes.py` |
 | M4 依赖图与环 | 看依赖图、环路径、同名冲突表 | GET /api/graph、页面 /graph | `app/modules/m4_graph/builder.py` `app/modules/m4_graph/tarjan.py` `app/modules/m4_graph/conflicts.py` | `tests/test_graph.py` `tests/test_tarjan.py` |
 | M5 版本区间与批次 | 查版本台账、提交新版、拒绝陈旧提交、看批次历史 | GET /api/versions、POST /api/versions/submit、GET /api/batches、页面 /versions | `app/modules/m5_versions/intervals.py` `app/modules/m5_versions/stale.py` `app/modules/m5_versions/batches.py` | `tests/test_versions.py` |
 | M6 影响面与导出 | 算影响分、核四账、导出指标/边/冲突/清单 | GET /api/impact、GET /api/reconcile、GET /api/export/*、页面 /impact | `app/modules/m6_impact/impact.py` `app/modules/m6_impact/export_out.py` `app/modules/m6_impact/json_out.py` | `tests/test_impact.py` |

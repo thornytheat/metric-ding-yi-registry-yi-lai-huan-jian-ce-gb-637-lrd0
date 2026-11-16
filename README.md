@@ -9,7 +9,7 @@
 |---|---|---|
 | M1 指标接入 | 粘贴/样例 → 逐行状态与阶段计数 | POST /api/import、/ |
 | M2 语法规则 | 聚合/字段/维度登记表、文法、单行试解析 | `GET /api/contract`、`POST /api/syntax/preview`、`/contract` |
-| M3 解析诊断 | 原因码分布、隔离行、隔离 CSV | `GET /api/diagnostics`、`/diagnostics` |
+| M3 解析诊断 | 原因码分布、隔离行、隔离 CSV、按行修复重放 | `GET /api/diagnostics`、`POST /api/diagnostics/fix`、`GET /api/diagnostics/fixes`、`/diagnostics` |
 | M4 依赖图与环 | 节点/边、强连通分量、环路径、同名冲突 | `GET /api/graph`、`/graph` |
 | M5 版本区间与批次 | 版本台账、提交新版、拒绝陈旧、批次历史 | `GET /api/versions`、`POST /api/versions/submit`、`GET /api/batches`、`/versions` |
 | M6 影响面与导出 | 影响分、四账、指标/边/冲突/清单导出 | `GET /api/impact`、`GET /api/reconcile`、`GET /api/export/*`、`/impact` |
@@ -28,6 +28,9 @@
 7. **下线迁移**：环按强连通分量计数，一个分量只出一个环，单点只有自环才算环；
    迁移次序按「依赖方先迁、被依赖方后下线」做确定性排序，环内指标进阻断表，
    同名指标按评估日生效版本说清下的是哪一版。
+8. **修复重放**：按原批次行号修复隔离行，成功即重算依赖并更新当前状态（注册表/图/四账）；
+   原始行与当时诊断原样留审计，每次修复的前后关联入 fixes 表；
+   `base_revision` 乐观锁拒绝过期修改，重算失败可重试且不重复登记。
 
 定义、单位、空值、去重键、账目等式见 `docs/DATA-DICTIONARY.md`；模块与陷阱登记见 `docs/DEPTH.md`。
 
@@ -68,6 +71,7 @@ python3 -m pytest -q
 - 环只按指标→指标边判定，报表与维度为叶子节点不参与。
 - 全角归一覆盖 `U+FF01`–`U+FF5E`、顿号、句号、全角空格；竖排标点不处理。
 - 版本提交写入当前批次，不回溯历史批次；无登录与权限，供内网 6 人使用。
+- 修复重放只更新当前状态（注册表/图/报表/四账），版本台账与历史诊断不回溯。
 - 下线只出计划不改数据：不写回注册表、不自动改报表，清单导出 CSV 交人工执行。
 - 迁移次序按指标→指标边排，不细分报表内部的字段级改动。
 

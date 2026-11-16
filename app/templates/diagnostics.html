@@ -72,5 +72,81 @@
   <p class="empty">还没有运行。</p>
   {% endif %}
 </section>
+
+<div class="sec-rule" aria-hidden="true"></div>
+
+<section class="sec">
+  <h2>修复重放</h2>
+  {% if batch %}
+  <p class="dim">按行号修复隔离行：修正后立即重算依赖，原始行与当时的诊断原样保留。
+    提交需带上该行最新代数，过期修改会被拒绝。</p>
+  {% if fixes.repairable %}
+  <form class="form" id="fix-form" action="/api/diagnostics/fix" method="post">
+    <label for="fx-line">隔离行</label>
+    <select id="fx-line" name="line_no">
+      {% for row in fixes.repairable %}
+      <option value="{{ row.line_no }}" data-revision="{{ row.base_revision }}"
+              data-raw="{{ row.raw }}">第 {{ row.line_no }} 行 · {{ row.code }}</option>
+      {% endfor %}
+    </select>
+    <label for="fx-raw">修复后内容（一行）</label>
+    <textarea id="fx-raw" name="raw_after" rows="3" spellcheck="false"></textarea>
+    <div class="form-row">
+      <button type="submit">修复并重放</button>
+      <span class="msg" id="fix-msg" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+  {% else %}
+  <p class="empty">没有待修复的隔离行。</p>
+  {% endif %}
+
+  {% if fixes.lines %}
+  <table class="tbl" style="margin-top:8px">
+    <thead><tr><th class="num">行</th><th>原状态</th><th>当前状态</th><th class="num">代数</th><th>最近结果</th><th>结论码</th></tr></thead>
+    <tbody>
+      {% for row in fixes.lines %}
+      <tr>
+        <td class="num">{{ row.line_no }}</td>
+        <td>{{ row.original_state | status }}</td>
+        <td>{% if row.current_state == 'registered' %}<span class="tag tag-ok">{{ row.current_state | status }}</span>{% else %}<span class="tag tag-block">{{ row.current_state | status }}</span>{% endif %}</td>
+        <td class="num">v{{ row.effective_revision }}</td>
+        <td>{% if row.last_status == 'applied' %}<span class="tag tag-ok">已生效</span>{% else %}<span class="tag tag-block">未通过</span>{% endif %}</td>
+        <td class="mono">{{ row.code or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% else %}
+  <p class="empty">还没有运行。</p>
+  {% endif %}
+</section>
+
+{% if fixes.fixes %}
+<div class="sec-rule" aria-hidden="true"></div>
+
+<section class="sec">
+  <h2>修复记录</h2>
+  <div class="scroll">
+    <table class="tbl">
+      <thead><tr><th class="num">行</th><th class="num">代</th><th>状态</th><th>修复前</th><th>修复后</th><th>重放结论</th><th>时间</th><th>操作</th></tr></thead>
+      <tbody>
+        {% for fix in fixes.fixes %}
+        <tr>
+          <td class="num">{{ fix.line_no }}</td>
+          <td class="num">v{{ fix.revision }}</td>
+          <td>{% if fix.status == 'applied' %}<span class="tag tag-ok">已生效</span>{% else %}<span class="tag tag-block">未通过</span>{% endif %}</td>
+          <td class="cut" title="{{ fix.raw_before }}">{{ fix.raw_before }}</td>
+          <td class="cut" title="{{ fix.raw_after }}">{{ fix.raw_after }}</td>
+          <td>{{ fix.diags_after[0].detail if fix.diags_after else '进入注册表' }}</td>
+          <td class="mono">{{ fix.created_at | ts }}</td>
+          <td class="mono">{{ fix.author }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
 {% endblock %}
 {% block scripts %}<script src="/static/diagnostics.js" defer></script>{% endblock %}
